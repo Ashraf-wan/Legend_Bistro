@@ -1,6 +1,4 @@
-import json, requests
-from urllib import response
-from random import choice
+import requests
 import time
 
 server = input("Enter the server IP address: ")
@@ -28,7 +26,6 @@ if choice == "1":
 elif choice == "2":
     user_name = input("What is you name?\n")
     user_order = input("What would you like to order?\n")
-    # deepcode ignore SSRF: <Not very important because it is for fun>
     order = requests.get(server + '/api/v1/order?id=' + user_order)
     print(order.content.decode('utf-8'))
     print("....")
@@ -37,8 +34,5 @@ elif choice == "2":
     pay = requests.get(server + '/api/v1/paying?method=' + method_payment)
     print(pay.content.decode('utf-8'))
     requests.get(server + '/api/v1/name?name=' + user_name)
-    time.sleep(10)
-    delivery = requests.get(server + '/api/v1/delivery')
-    print(delivery.content.decode('utf-8'))
 else:
     print("invalid options")
