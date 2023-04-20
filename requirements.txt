@@ -2,3 +2,4 @@ numpy
 flask
 flask_restful
 requests
+pandas

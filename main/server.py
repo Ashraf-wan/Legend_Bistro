@@ -1,71 +1,10 @@
-from flask import Flask, request, jsonify, send_file
-from flask_restful import Resource, Api
-import time
+from flask import Flask, request, jsonify
+import pandas as pd
 import json
 
-menus_item = [
-    {
-        "id": 1,
-        "name": "Classic Pizza",
-        "price": "$8.00",
-        "line": 2
-    },
-    {
-        "id": 2,
-        "name": "Pepperoni Pizza",
-        "price": "$10.00",
-        "line": 4
-    },
-    {
-        "id": 3,
-        "name": "Cheese Pizza",
-        "price": "$12.00",
-        "line": 6
-    },
-    {
-        "id": 4,
-        "name": "Meat Lover's Pizza",
-        "price": "$16.00",
-        "line": 8
-    },
-    {
-        "id": 5,
-        "name": "Veggie Pizza",
-        "price": "$14.00",
-        "line": 10
-    },
-    {
-        "id": 6,
-        "name": "Hawaiian Pizza",
-        "price": "$13.00",
-        "line": 12
-    },
-    {
-        "id": 7,
-        "name": "Margherita Pizza",
-        "price": "$11.00",
-        "line": 14
-    },
-    {
-        "id": 8,
-        "name": "BBQ Chicken Pizza",
-        "price": "$15.00",
-        "line": 16
-    },
-    {
-        "id": 9,
-        "name": "Supreme Pizza",
-        "price": "$17.00",
-        "line": 18
-    },
-    {
-        "id": 10,
-        "name": "Mushroom Pizza",
-        "price": "$12.00",
-        "line": 20
-    }
-]
-
+with open('Menu.json') as menu:
+    menu_read = menu.read()
+    menus_item = json.loads(menu_read)
 app = Flask(__name__)
 
 
@@ -93,12 +32,12 @@ def api_id():
             if menu['id'] == id:
                 item = menu
                 break
-        with open('report.txt','r') as f:
+        with open('report.txt', 'r') as f:
             number1 = int(item['line']) - 1
             reading = f.readlines()
             line = int(reading[number1]) + 1
         reading[number1] = str(line) + "\n"
-        with open('report.txt','w') as f:
+        with open('report.txt', 'w') as f:
             f.write("".join(str(item) for item in reading))
         if item:
             return str("Your order is " + item['name'] + " and the price is " + item['price'])
@@ -133,4 +72,4 @@ def api_paying():
         return "Error: No method field provided. Please specify a method."
 
 
-app.run(port=5000, debug=True)
+app.run(port=5000)
