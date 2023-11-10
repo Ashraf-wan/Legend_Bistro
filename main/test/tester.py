@@ -4,6 +4,7 @@ user_order = str(x)
 user_name = str("bob")
 server = "http://127.0.0.1:5000"
 method_payment = "cash"
+adminpass = "AdminPass"
 print("Test 1: Ordering a pizza")
 try:
     order = requests.get(server + '/api/v1/order?id=' + user_order)
