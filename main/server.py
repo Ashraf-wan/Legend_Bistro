@@ -70,6 +70,28 @@ def api_paying():
         return 'Thank you for purchasing from legend bistro, we will deliver your order in 5 minutes'
     else:
         return "Error: No method field provided. Please specify a method."
-
+@app.route('/api/v1/admin')
+def api_admin():
+    headers = request.headers
+    auth = headers.get("X-Api-Key")
+    if auth == 'AdminPass':
+        f = open('report.txt', 'r')
+        filetmp = f.read()
+        filelisttmp = filetmp.split('\n')
+        filelist = []
+        for listtmp in filelisttmp:
+            if listtmp.isdigit():
+                filelist.append(int(listtmp))
+            else:
+                filelist.append(listtmp)
+        filelistint = [x for x in filelist if isinstance(x, int)]
+        fileliststr = [x for x in filelist if isinstance(x, str)]
+        plotdata = pd.DataFrame(
+            {"Pizza Type": [filelistint]},
+            index=[fileliststr]
+        )
+        plotdata.plot(kind="bar")
+    else:
+        return "Error: Wrong Password from the user", 401
 
 app.run(port=5000)
