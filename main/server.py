@@ -1,10 +1,14 @@
+import time
 from flask import Flask, request, jsonify
 import pandas as pd
 import json
+import sqlite3 as sql
+import base64
 
 with open('Menu.json') as menu:
     menu_read = menu.read()
     menus_item = json.loads(menu_read)
+
 app = Flask(__name__)
 
 
@@ -20,61 +24,91 @@ def menu():
 
 @app.route('/api/v1/order')
 def api_id():
-    # Check if an ID was provided as part of the URL.
-    # If ID is provided, assign it to a variable.
-    # If no ID is provided, return an error message.
-    if 'id' in request.args:
-        id = int(request.args['id'])
-        item = None
-        # Loop through the data and match results that fit the requested ID.
-        # IDs are unique, but other fields might return many results
-        for menu in menus_item:
-            if menu['id'] == id:
-                item = menu
-                break
-        with open('report.txt', 'r') as f:
-            number1 = int(item['line']) - 1
-            reading = f.readlines()
-            line = int(reading[number1]) + 1
-        reading[number1] = str(line) + "\n"
-        with open('report.txt', 'w') as f:
-            f.write("".join(str(item) for item in reading))
-        if item:
-            return str("Your order is " + item['name'] + " and the price is " + item['price'])
+    signed_in = False
+
+    def order(sign_stats):
+        if 'id' in request.args:
+            id = int(request.args['id'])
+            item = None
+            for menu in menus_item:
+                if menu['id'] == id:
+                    item = menu
+                    break
+            with open('report.txt', 'r') as f:
+                number1 = int(item['line']) - 1
+                reading = f.readlines()
+                line = int(reading[number1]) + 1
+            reading[number1] = str(line) + "\n"
+            with open('report.txt', 'w') as f:
+                f.write("".join(str(item) for item in reading))
+            if item:
+                return str("Your order is " + item['name'] + " Pizza " + "and the price is " + item['price'])
+                if sign_stats == True:
+                    
+            else:
+                return "Error: Invalid id provided. No menu item found with the specified id.", 404
         else:
-            return "Error: Invalid id provided. No menu item found with the specified id."
+            return "Error: No id field provided. Please specify an id.", 404
+
+
+@app.route('/api/v1/newacc')
+def api_new_account():
+    headers = request.headers
+    b64cred = headers.get("Auth")
+    cc_info = headers.get("CC")
+    con = sql.connect("creds.db")
+    cur = con.cursor()
+
+    def base64_decode(str1, str2):
+        base64_string = str1 + "," + str2
+        base64_bytes = base64_string.encode("ascii")
+        decoded_b64_string_bytes = base64.b64decode(base64_bytes)
+        decoded_b64_string = decoded_b64_string_bytes.decode("ascii")
+        tmp = decoded_b64_string.split(",")
+        return tmp
+
+    tmp = base64_decode(b64cred, cc_info)
+    username = tmp[0]
+    password = tmp[1]
+    cvc = tmp[2]
+    cn = tmp[3]
+    ed = tmp[4]
+    statement = f"INSERT INTO “users” VALUES (‘{username}’,’{password}’,'{cvc}','{cn}','{ed}');"
+    cur.execute(statement)
+
+
+def verify_password(b64creds, typeauth):
+    con = sql.connect("creds.db")
+    cur = con.cursor()
+    base64_string = b64creds
+    base64_bytes = base64_string.encode("ascii")
+    decoded_b64_string_bytes = base64.b64decode(base64_bytes)
+    decoded_b64_string = decoded_b64_string_bytes.decode("ascii")
+    tmp = decoded_b64_string.split(",")
+    username = tmp[0]
+    password = tmp[1]
+    statement = f"SELECT username from users WHERE username='{username}' AND Password = '{password}';"
+    statement_admin = f"SELECT username from admin WHERE username='{username}' AND Password = '{password}';"
+    if typeauth == "admin":
+        cur.execute(statement_admin)
+        if not cur.fetchone():
+            return False
+        else:
+            return True
     else:
-        return "Error: No id field provided. Please specify an id."
+        cur.execute(statement)
+        if not cur.fetchone():
+            return False
+        else:
+            return True
 
 
-@app.route("/api/v1/name")
-def api_name():
-    # Check if a name was provided as part of the URL.
-    # If name is provided, assign it to a variable.
-    # If no name is provided, return an error message.
-    if 'name' in request.args:
-        user_name = request.args['name']
-        return user_name
-    else:
-        return "Error: No name field provided. Please specify a name."
-
-
-# file deepcode ignore MissingClose: <please specify a reason of ignoring this>
-
-@app.route('/api/v1/paying')
-def api_paying():
-    # Check if a payment method was provided as part of the URL.
-    # If payment method is provided, return a confirmation message.
-    # If no payment method is provided, return an error message.
-    if 'method' in request.args:
-        return 'Thank you for purchasing from legend bistro, we will deliver your order in 5 minutes'
-    else:
-        return "Error: No method field provided. Please specify a method."
 @app.route('/api/v1/admin')
 def api_admin():
     headers = request.headers
-    auth = headers.get("X-Api-Key")
-    if auth == 'AdminPass':
+    authtmp = headers.get("Auth")
+    authstat = verify_password(authtmp, "admin")
+    if authstat:
         f = open('report.txt', 'r')
         filetmp = f.read()
         filelisttmp = filetmp.split('\n')
@@ -87,11 +121,14 @@ def api_admin():
         filelistint = [x for x in filelist if isinstance(x, int)]
         fileliststr = [x for x in filelist if isinstance(x, str)]
         plotdata = pd.DataFrame(
-            {"Pizza Type": [filelistint]},
-            index=[fileliststr]
+            {"Pizza Sales": filelistint},
+            index=fileliststr
         )
-        plotdata.plot(kind="bar")
+        image = plotdata.plot(kind="bar").get_figure()
+        image.savefig('plot.png')
+        time.sleep(1000)
     else:
-        return "Error: Wrong Password from the user", 401
+        return "Wrong username or password", 401
+
 
 app.run(port=5000)
